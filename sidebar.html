@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.11.0/themes/smoothness/jquery-ui.css">
+    <!-- The CSS package above applies Google styling to buttons and other elements. -->
+
+    <style>
+    .branding-below {
+      bottom: 56px;
+      top: 0;
+    }
+
+    .branding-text {
+      left: 7px;
+      position: relative;
+      top: 3px;
+    }
+
+    .logo {
+      vertical-align: middle;
+    }
+
+    .box {
+      margin: 10px;
+    }
+
+    .selectbox {
+      width: 250px;
+      overflow: scroll;
+    }
+
+    .word {
+      width: 230px;
+      background: #ffcccc;
+      margin: 0px 0px 10px 0px;
+      padding: 10px 0px 10px 10px;
+      border: #ff0000 outset 5px;
+    }
+    </style>
+  </head>
+  <body>
+    <div class="sidebar branding-below" id="tabhoge">
+      <ul>
+        <li><a href="#t-1">phrases</a></li>
+        <li><a href="#t-2">checker</a></li>
+      </ul>
+      <div id="t-1">
+        <div class="box">
+          <b>Search</b>
+          <input type="text" id="input_search" placeholder="text" style="width:250px;">
+        </div>
+          <div class="box">
+          <b>Group</b>
+          <select size="10" id="select_group" class="selectbox"></select>
+        </div>
+        <div class="box">
+          <b>Phrase</b>
+          <select size="10" id="select_phrase" class="selectbox"></select>
+        </div>
+        <div class="box">
+          <b>Compound</b>
+          <div class="word" id="word_comp"></div>
+          <button type="button" id="button_input">input</button>
+        </div>
+        <div class="box">
+          <button type="button" id="button_update">update</button>
+          <!-- <button type="button" id="button_save">save</button> -->
+        </div>
+      </div>
+
+      <div id="t-2">
+        <div class="box">
+          <b>Search</b>
+          <input type="text" id="input_search_checker" placeholder="text" style="width:250px;">
+        </div>
+        <div class="box">
+          <b>Checker</b>
+          <select size="10" id="select_checker_name" class="selectbox"></select>
+        </div>
+        <div class="box">
+          <b>Values</b>
+          <select size="5" id="select_checker_value" class="selectbox"></select>
+        </div>
+        <div class="box">
+          <b>Compound</b>
+          <div class="word" id="word_checker"></div>
+          <button type="button" id="button_input_checker">input</button>
+        </div>
+        <div class="box">
+          <button type="button" id="button_get_checker">update</button>
+        </div>
+
+      </div>
+    </div>
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <script src="//code.jquery.com/ui/1.11.0/jquery-ui.js"></script>
+
+    <script>
+      var obj;
+      var checker;
+
+      $(function() {
+        getPhrase();
+        getChecker();
+        $("#tabhoge").tabs();
+      });
+      $('#input_search').keyup(function(){
+        search($('#input_search').val());
+      });
+      $('#input_search_checker').keyup(function(){
+        search2($('#input_search_checker').val());
+      });
+      $('#select_group').change(function(){
+        updatePhraseList($(this).val());
+        updateWord();
+      });
+      $('#select_checker_name').change(function(){
+        updateCheckerValueList($(this).val());
+        updateWordChecker();
+      });
+      $('#button_search').click(function(){
+        search($('#input_search').val());
+      });
+      $('#button_update').click(function(){
+        $('#select_group').children().remove();
+        $('#select_phrase').children().remove();
+        getPhrase();
+      });
+      $('#button_input').click(function(){
+        var word = $('#word_comp').text();
+        if(word != ''){
+          google.script.run.setText(word);
+        }
+      });
+      $('#button_input_checker').click(function(){
+        var word = $('#word_checker').text();
+        if(word != ''){
+          google.script.run.setText(word);
+        }
+      });
+      $('#button_get_checker').click(function(){
+        $('#select_checker_name').children().remove();
+        $('#select_checker_value').children().remove();
+        getChecker();
+      });
+
+      function getPhrase(){
+        google.script.run
+          .withSuccessHandler(resultPhrases)
+          .withFailureHandler(showError)
+          .getPhrases();
+      }
+
+      function resultPhrases(res){
+        console.log(res);
+
+        obj = res;
+        var $select = $('#select_group'), $option;
+
+        res.groupList.forEach(function(val){
+          $option = $('<option>', { value: val, text: val, selected: false });
+          $option.css({'text-align':'left'});
+          $select.append($option);
+        });
+      }
+
+      function getChecker(){
+        google.script.run
+          .withSuccessHandler(resultCheckers)
+          .withFailureHandler(showError)
+          .getCheckers();
+      }
+
+      function resultCheckers(res){
+        console.log(res);
+
+        checker = res;
+        var $select = $('#select_checker_name'), $option;
+
+        res.checkerName.forEach(function(val){
+          $option = $('<option>', { value: val, text: val, selected: false });
+          $option.css({'text-align':'left'});
+          $select.append($option);
+        });
+      }
+
+      function showError(msg, element) {
+        alert(msg);
+      }
+
+      function search(phrase){
+        var res = searchPhrase(phrase);
+        var isFirst = true;
+        var $select = $('#select_group'), $option, options;
+
+        $select.children().remove();
+        $('#select_phrase').children().remove();
+
+        res.forEach(function(val){
+          $option = $('<option>', { value: val, text: val, selected: isFirst });
+          $option.css({'text-align':'left'});
+          $select.append($option);
+
+          if(isFirst){
+            isFirst = false;
+            updatePhraseList(val);
+            updateWord();
+          }
+        });
+      }
+
+      function searchPhrase(phrase){
+        var result = [];
+
+        if(phrase == ''){
+          return obj.groupList;
+        }
+
+        for (var i=0; i<obj.phraseList.length; i++){
+          //if(obj.phraseList[i].indexOf(phrase) != -1){
+          if(phrase.match(new RegExp(obj.phraseList[i]))){
+            result.push(obj.phraseListToGroup[i]);
+          }
+        }
+
+        return result.filter(function (x, i, self) { return self.indexOf(x) === i;});
+      }
+
+      function updatePhraseList(groupName){
+        var $select = $('#select_phrase'), $option, isSelected, searchWord = $('#input_search').val();
+
+        $select.children().remove();
+
+        $(obj.xml).find('group[id="' + groupName + '"]').each(function(){
+          $(this).find('phrase').each(function(){
+            console.log($(this).text());
+            isSelected = (searchWord.match(new RegExp($(this).text())) != null)
+            $option = $('<option>', { value: $(this).text(), text: $(this).text(), selected: isSelected });
+            $option.css({'text-align':'left'});
+            $select.append($option);
+          });
+        });
+      }
+
+      function updateWord(){
+        $('#word_comp').text($('#select_group').val() + '#' + $('#input_search').val());
+      }
+
+      function updateWordChecker(){
+        $('#word_checker').text($('#select_checker_name').val());
+      }
+
+      function updateCheckerValueList(checkerName){
+        var $select = $('#select_checker_value'), $option, isSelected, searchValue = $('#input_search_checker').val();
+
+        $select.children().remove();
+
+        for (var i=0; i<checker.value2Name.length; i++){
+          if(checker.value2Name[i] == checkerName){
+            isSelected = (checker.checkerValue[i].indexOf(searchValue) != -1)
+            $option = $('<option>', { value: checker.checkerValue[i], text: checker.checkerValue[i], selected: isSelected });
+            $option.css({'text-align':'left'});
+            $select.append($option);
+          }
+        }
+      }
+
+      function search2(checkerValue){
+        var res = searchChecker(checkerValue);
+        var isFirst = true;
+        var $select = $('#select_checker_name'), $option, options;
+
+        $select.children().remove();
+        $('#select_checker_value').children().remove();
+
+        res.forEach(function(val){
+          $option = $('<option>', { value: val, text: val, selected: isFirst });
+          $option.css({'text-align':'left'});
+          $select.append($option);
+
+          if(isFirst){
+            isFirst = false;
+            updateCheckerValueList(val);
+          }
+        });
+      }
+
+      function searchChecker(searchValue){
+        var result = [];
+
+        if(searchValue == ''){
+          return checker.checkerName;
+        }
+
+        for (var i=0; i<checker.checkerValue.length; i++){
+          if(checker.checkerValue[i].indexOf(searchValue) != -1){
+            result.push(checker.value2Name[i]);
+          }
+        }
+
+        return result.filter(function (x, i, self) { return self.indexOf(x) === i;});
+      }
+
+    </script>
+  </body>
+</html>
